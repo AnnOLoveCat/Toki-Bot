@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.env
+.env
+*.log
+*.sqlite3
+*.db
+
+# Virtual environments
+venv/
+.env/
+
+# VSCode
+.vscode/
+
+# MacOS 系統檔案
+.DS_Store
