@@ -22,13 +22,10 @@ class MyBot(commands.Bot):
                 raise RuntimeError("CommandTree 尚未初始化")
             
             # 加載擴展
-            print("正在加載 responses 擴展...")
+            print("正在加載 extension 擴展...")
             await self.load_extension("responses")
-            print("已成功加載 responses 擴展！")
-
-            print("正在加載 news 擴展...")
             await self.load_extension("news")
-            print("已成功加載 news 擴展！")
+            print("已成功加載 extension 擴展！")
 
             # 確保指令同步
             print("正在同步指令...")

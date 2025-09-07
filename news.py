@@ -3,10 +3,9 @@ from datetime import datetime
 from discord.ext import commands, tasks
 from discord import app_commands
 from dotenv import load_dotenv
-import os
-import requests
+import os, requests, re
 from bs4 import BeautifulSoup
-import re
+
 
 load_dotenv()
 channel_id = int(os.getenv("channel_id"))
@@ -20,7 +19,7 @@ class NewsManager(commands.Cog):
         self.news_channel_id = channel_id  # 設置要自動發送新聞的頻道 ID
 
     
-    @tasks.loop(minutes=30)
+    @tasks.loop(hours=1)
     async def check_news_task(self):
         """自動檢查新聞並發送最新內容"""
         url = 'https://news.ltn.com.tw/list/breakingnews'

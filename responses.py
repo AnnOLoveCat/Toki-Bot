@@ -1,9 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import logging
-import json
-import os
+import logging, json, os
 
 # check JSON file existed
 RESPONSES_FILE = "responses.json"
