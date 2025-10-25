@@ -18,17 +18,17 @@ class Response(commands.GroupCog, name = "response"):
 
     def __init__(self, bot):
         self.bot = bot
-        self.responses = self.load_responses()  # ✅ 正確初始化 responses
+        self.responses = self.load_responses()  # 正確初始化 responses
 
     def load_responses(self):
         """載入 JSON 檔案中的回應資料"""
         if os.path.exists(RESPONSES_FILE):
             try:
                 with open(RESPONSES_FILE, "r", encoding="utf-8") as f:
-                    return json.load(f)  # ✅ 確保 responses 正確載入
+                    return json.load(f)  # 確保 responses 正確載入
             except json.JSONDecodeError:
-                logging.warning("⚠️ responses.json format error，reset to empty")
-                return {}  # ✅ 防止 JSON 檔案損壞時發生錯誤
+                logging.warning("responses.json format error，reset to empty")
+                return {}  # 防止 JSON 檔案損壞時發生錯誤
 
         return {}  # 如果檔案不存在，回傳空字典
 
@@ -44,19 +44,19 @@ class Response(commands.GroupCog, name = "response"):
                 json.dump(self.responses, f, indent=4, ensure_ascii=False)
 
         except Exception as e:
-            logging.error(f"❌ 儲存 responses.json 時發生錯誤: {e}")
+            logging.error(f"儲存 responses.json 時發生錯誤: {e}")
             
             # 如果寫入失敗，恢復備份
             if os.path.exists(f"{RESPONSES_FILE}.backup"):
                 os.rename(f"{RESPONSES_FILE}.backup", RESPONSES_FILE)
-
+    
     @app_commands.command(name="add", description="add keyword's response")
     @app_commands.describe(keyword="type any keyword", response="response content")
     async def add_response(self, interaction: discord.Interaction, keyword: str, response: str):
         """新增關鍵字回應"""
         self.responses[keyword] = response
-        self.save_responses()  # ✅ 正確存檔
-        await interaction.response.send_message(f"✅ add keyword: `{keyword}`，response：`{response}`")
+        self.save_responses()  # 正確存檔
+        await interaction.response.send_message(f"add keyword: `{keyword}`，response：`{response}`")
 
 
     @app_commands.command(name="remove", description="remove keyword's response")
@@ -66,16 +66,16 @@ class Response(commands.GroupCog, name = "response"):
         if keyword in self.responses:
             del self.responses[keyword]
             self.save_responses()
-            await interaction.response.send_message(f"🗑️ removed `{keyword}`")
+            await interaction.response.send_message(f"removed `{keyword}`")
         else:
-            await interaction.response.send_message(f"❌ `{keyword}` does NOT existed", ephemeral=True)
+            await interaction.response.send_message(f"`{keyword}` does NOT existed", ephemeral=True)
 
 
     @app_commands.command(name="show", description="show all keyword responses")
     async def show_responses(self, interaction: discord.Interaction):
         """顯示所有關鍵字回應"""
         if not self.responses:
-            await interaction.response.send_message("⚠️ these no saves keyword response", ephemeral=True)
+            await interaction.response.send_message("these no saves keyword response", ephemeral=True)
             return
 
         response_list = "\n".join([f"🔹 `{key}` ➝ `{value}`" for key, value in self.responses.items()])
@@ -84,11 +84,11 @@ class Response(commands.GroupCog, name = "response"):
         # Discord 限制單次訊息最大 4096 字元，超過則拆分
         if len(response_str) > 4000:
             chunks = [response_str[i : i + 4000] for i in range(0, len(response_str), 4000)]
-            await interaction.response.send_message("📜 Keyword responses are too long, sending in multiple messages...")
+            await interaction.response.send_message("Keyword responses are too long, sending in multiple messages...")
             for chunk in chunks:
                 await interaction.followup.send(chunk)
         else:
-            embed = discord.Embed(title="🔍 keyword response list: ", description=response_list, color=0x00ff00)
+            embed = discord.Embed(title="keyword response list: ", description=response_list, color=0x00ff00)
             await interaction.response.send_message(embed=embed)
 
 

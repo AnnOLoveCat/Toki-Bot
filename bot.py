@@ -23,8 +23,11 @@ class MyBot(commands.Bot):
             
             # 加載擴展
             print("正在加載 extension 擴展...")
+
             await self.load_extension("responses")
             await self.load_extension("news")
+            # await self.load_extension("news_links")   //其實這邊沒有指令，所以無需去加載
+
             print("已成功加載 extension 擴展！")
 
             # 確保指令同步
@@ -37,10 +40,17 @@ class MyBot(commands.Bot):
         except Exception as e:
             print(f"初始化時發生錯誤：{e}")
 
+            
+        @bot.command(name="sync",help="手動同步 Slash 指令到 Discord(開發者用)", description="手動同步 Slash 指令到 Discord(開發者用)")
+        @commands.is_owner()
+        async def sync(ctx):
+            await bot.tree.sync()
+            await ctx.send("Slash commands 已同步！")
 
     async def close(self):
         await super().close()
         print("機器人已關閉")
+
 
 if __name__ == "__main__":
     bot = MyBot()
