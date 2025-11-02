@@ -1,6 +1,6 @@
-import re, requests
+import re, requests, feedparser
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 USER_AGENT = {
     "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -17,44 +17,76 @@ def format(time, title, url, image):
             "url": url.strip() if url else "",
             "image": image.strip() if image else None,}
 
-def shorten(s: str, n: int) -> str:
-    s = re.sub(r"\s+", " ", s.strip())
-    return s if len(s) <= n else s[:n-1] + "…"
+def clean_url(u: str | None, base: str) -> str | None:
+    if not u:
+        return None
+    u = u.strip()
+    if u.startswith("//"):
+        u = "https:" + u
+    if not u.startswith("http"):
+        u = urljoin(base, u)
+    parsed = urlparse(u)
+    if parsed.scheme not in ("http", "https"):
+        return None
+    return u
+
+def shorten(text: str, max_len: int = 40) -> str:
+    text = re.sub(r"\s+", " ", text.strip())
+    return text if len(text) <= max_len else text[:max_len - 1] + "…"
 
 # ---------- ltn ----------
-def get_ltn(limit: int = 3):
-    base = "https://news.ltn.com.tw/list/breakingnews"
-    r = requests.get(base, headers=USER_AGENT, timeout=10)
-    r.raise_for_status()
-    soup = BeautifulSoup(r.text, "lxml")
+def get_ltn(limit: int = MAX_DEFAULT):
+    rss_url = "https://news.ltn.com.tw/rss/all.xml"
+    feed = feedparser.parse(rss_url)
+    results = []
 
-    titles = soup.select(".content940 a.tit") or []
-    thumbs = soup.select(".content940 img.lazy_imgs_ltn") or []
-    items = []
+    for entry in feed.entries[:limit]:
+        url = entry.link
+        title = entry.title
 
-    for i, a in enumerate(titles[:limit]):
-        raw = a.get_text(strip=True)
-        # 時間在開頭或在鄰近 .time
-        
-        m = re.match(r"^(\d{1,2}:\d{2})", raw)
-        time_str = m.group(1) if m else None
-        if not time_str:
-            parent = a.parent
-            tnode = parent.select_one(".time") if parent else None
-            if tnode:
-                m2 = re.search(r"\b(\d{1,2}:\d{2})\b", tnode.get_text(" ", strip=True))
-                time_str = m2.group(1) if m2 else None
+        # 進入文章頁抓 og:image + 時間
+        try:
+            r2 = requests.get(url, headers=USER_AGENT, timeout=10)
+            r2.raise_for_status()
+            soup2 = BeautifulSoup(r2.text, "lxml")
 
-        # 標題：清掉任何 HH:MM
-        title = re.sub(r"^\s*\d{1,2}:\d{2}\s*", "", raw)
-        title = re.sub(r"\b\d{1,2}:\d{2}\b", "", title).strip()
+            # 標題
+            h1 = soup2.select_one("h1")
+            title = h1.get_text(strip=True) if h1 else entry.title
 
-        url = urljoin(base, a.get("href", ""))
-        img_raw = thumbs[i].get("data-src") or thumbs[i].get("src") if i < len(thumbs) else None
-        image = urljoin(base, img_raw) if img_raw else None
-        items.append(format(time_str, title, url, image))
+            # 時間
+            time_str = None
+            meta_time = soup2.find("meta", property="article:published_time")
+            if meta_time and meta_time.get("content"):
+                m = re.search(r"T(\d{2}:\d{2})", meta_time["content"])
+                if m:
+                    time_str = m.group(1)
 
-    return items
+            # 圖片
+            og_img = soup2.find("meta", property="og:image")
+            img_url = og_img["content"].strip() if og_img and og_img.get("content") else None
+            img_url = clean_url(img_url, url)
+        except Exception as e:
+            print(f"{rss_url}抓取內頁失敗：{e}")
+            continue
+
+        if not img_url:
+            print(f"{rss_url} 無圖片，跳過：{url}")
+            continue
+
+        title_text = f"{shorten(title, 60)}"
+
+        results.append({
+            "time": time_str,
+            "title": title_text,     # 這是 embed title
+            "url": url,
+            "image": img_url,
+        })
+
+    print(f"成功抓到 {len(results)} 則 LTN 新聞")
+    return results
+
+    
 
 # ---------- TVBS ----------
 def get_tvbs(limit: int = 3):

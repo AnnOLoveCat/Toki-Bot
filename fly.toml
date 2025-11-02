@@ -16,6 +16,10 @@ primary_region = "hkg"
   min_machines_running = 0
   processes = ["app"]
 
+[[restart]]
+  policy = "always"
+  retries = 10
+  
 [[vm]]
   cpu_kind = "shared"
   cpus = 1

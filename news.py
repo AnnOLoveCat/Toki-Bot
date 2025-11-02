@@ -1,6 +1,4 @@
-# news.py
-import os
-import discord
+import os, discord
 from discord.ext import commands, tasks
 from discord import app_commands
 from datetime import datetime, timezone
@@ -17,7 +15,7 @@ def _env_int(*keys: str) -> int | None:
             return int(v)
     return None
 
-# ✅ 同時支援小寫與大寫 .env key
+# 同時支援小寫與大寫 .env key
 NEWS_CHANNEL_ID  = _env_int("news_channel_id", "NEWS_CHANNEL_ID")
 GAMING_CHANNEL_ID = _env_int("game_channel_id", "GAMING_CHANNEL_ID")
 GUILD_ID = _env_int("GUILD_ID")
@@ -50,8 +48,9 @@ class NewsManager(commands.Cog):
         self.gaming_channel_id = GAMING_CHANNEL_ID
 
     # ---------- Auto：LTN ----------
-    @tasks.loop(minutes=30)
+    @tasks.loop(hours=1)
     async def check_news_task(self):
+        print("check_news_task() 正在執行")
         if not self.news_channel_id:
             print("未設置新聞頻道 ID，跳過發送。")
             return
@@ -80,6 +79,11 @@ class NewsManager(commands.Cog):
 
             await channel.send(embed=embed)
             self.latest_news.add(key)
+        
+        print(f"抓到 {len(items)} 則新聞")
+        for i, item in enumerate(items, 1):
+            print(f"{i}. {item['time']} {item['title']}")
+        
 
     # ---------- Auto：Reddit（Game） ----------
     @tasks.loop(hours=1)
@@ -192,12 +196,39 @@ class NewsManager(commands.Cog):
         self.gaming_channel_id = channel.id
         await interaction.response.send_message(f"遊戲頻道已設置為：{channel.mention}", ephemeral=True)
 
+    @app_commands.command(name="show_news_channels", description="顯示目前設定的新聞與遊戲頻道")
+    async def show_news_channels(self, interaction: discord.Interaction):
+        """顯示目前設定的頻道狀態"""
+        news_ch = self.bot.get_channel(self.news_channel_id) if self.news_channel_id else None
+        gaming_ch = self.bot.get_channel(self.gaming_channel_id) if self.gaming_channel_id else None
+
+        msg_lines = []
+        msg_lines.append(f"**新聞頻道**：{news_ch.mention if news_ch else '未設置'}")
+        msg_lines.append(f"**遊戲頻道**：{gaming_ch.mention if gaming_ch else '未設置'}")
+
+        embed = discord.Embed(
+            title="當前頻道設定狀態",
+            description="\n".join(msg_lines),
+            color=discord.Color.blue(),
+            timestamp=datetime.now(timezone.utc)
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @check_news_task.before_loop
+    async def before_news_task(self):
+        print("等待 bot 準備完成...")
+        await self.bot.wait_until_ready()
+        print("bot 準備完成，開始自動新聞任務")
+
     async def cog_load(self):
         if GUILD_ID:
             for cmd in self.get_app_commands():
-                cmd.guilds = [discord.Object(id=GUILD_ID)]  # ✅ Object 大寫
+                cmd.guilds = [discord.Object(id=GUILD_ID)]  # Object 大寫
+                
+        print("cog_load() 已執行 — 啟動定時任務")
         if not self.check_news_task.is_running():
             self.check_news_task.start()
+            print("check_news_task started")
         if not self.check_gaming_task.is_running():
             self.check_gaming_task.start()
 
